@@ -44,10 +44,6 @@ jobs:
       run: |
         gcloud auth configure-docker $ARTIFACT_REGISTRY
 
-    - name: Create credentials file for Cloud Run
-      run: |
-        echo '${{ secrets.GCP_CREDENTIALS }}' > /tmp/gcp-credentials.json
-
     - name: Build Docker image
       working-directory: ./allygo_authentificator_ms
       run: |
@@ -58,17 +54,6 @@ jobs:
     - name: Push Docker image to Artifact Registry
       run: |
         docker push "$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:latest"
-
-    - name: Create or update secret in Secret Manager
-      run: |
-        # Verificar si el secreto existe
-        if gcloud secrets describe gcp-credentials --project=$PROJECT_ID &>/dev/null; then
-          echo "Secret exists, creating new version..."
-          echo '${{ secrets.GCP_CREDENTIALS }}' | gcloud secrets versions add gcp-credentials --data-file=-
-        else
-          echo "Creating new secret..."
-          echo '${{ secrets.GCP_CREDENTIALS }}' | gcloud secrets create gcp-credentials --data-file=- --replication-policy="automatic"
-        fi
 
     - name: Deploy to Cloud Run
       run: |
@@ -84,8 +69,7 @@ jobs:
           --cpu=1 \
           --timeout=600 \
           --cpu-boost \
-          --update-secrets=/secrets/gcp-credentials.json=gcp-credentials:latest \
-          --set-env-vars="GOOGLE_APPLICATION_CREDENTIALS=/secrets/gcp-credentials.json,GOOGLE_CLOUD_PROJECT=allygo"
+          --set-env-vars="GOOGLE_CLOUD_PROJECT=allygo"
 
     - name: Get Cloud Run URL
       run: |
