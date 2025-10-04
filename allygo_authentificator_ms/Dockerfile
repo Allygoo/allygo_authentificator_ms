@@ -19,6 +19,11 @@ COPY src ./src
 # Compila el proyecto sin ejecutar tests
 RUN mvn clean package -DskipTests
 
+# Verificar que el JAR se creó y renombrarlo para evitar problemas de versionado
+RUN ls -la target/ && \
+    mv target/*.jar target/app.jar && \
+    ls -la target/
+
 # Expone el puerto de la aplicación
 EXPOSE 8080
 
@@ -26,4 +31,4 @@ EXPOSE 8080
 ENV GOOGLE_APPLICATION_CREDENTIALS="/app/gcp-credentials.json"
 
 # Comando para ejecutar la app
-CMD ["java", "-jar", "target/allygo-authentificator-ms-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "/app/target/app.jar"]

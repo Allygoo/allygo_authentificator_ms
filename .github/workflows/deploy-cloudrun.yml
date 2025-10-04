@@ -49,7 +49,7 @@ jobs:
         echo '${{ secrets.GCP_CREDENTIALS }}' > /tmp/gcp-credentials.json
 
     - name: Build Docker image
-      working-directory: ./allygo_authentificator_ms/allygo_authentificator_ms
+      working-directory: ./allygo_authentificator_ms
       run: |
         docker build \
           --tag "$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:latest" \
