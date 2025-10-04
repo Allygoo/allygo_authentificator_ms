@@ -1,81 +1,118 @@
 package com.allygo.allygoauthenticatorms.Controller;
 
+import com.allygo.allygoauthenticatorms.JwtUtil;
 import com.allygo.allygoauthenticatorms.Record.NewUser;
+import com.allygo.allygoauthenticatorms.Services.LoginService;
 import com.allygo.allygoauthenticatorms.Services.UserService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
-    private final UserService userService;
-    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+    @Autowired
+    private UserService userService;
 
-    public AuthController(UserService userService) {
-        this.userService = userService;
-    }
+    @Autowired
+    private JwtUtil jwtUtil;
 
-    // Registrar un nuevo usuario (ID autogenerado por Firestore)
+    /**
+     * Registro de usuario en Firestore con password encriptada
+     */
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody NewUser newUser) {
+    public ResponseEntity<?> register(@RequestBody NewUser user) {
         try {
-            logger.info("Register request received: {}", newUser);
-            String result = userService.saveUser(newUser);
-            logger.info("User successfully saved: {}", result);
-            return ResponseEntity.ok(result);
+            String result = userService.saveUser(user);
+            return ResponseEntity.ok(Map.of("message", result));
         } catch (Exception e) {
-            logger.error("Error registering user", e);
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+            return ResponseEntity.status(500).body("Error registrando usuario: " + e.getMessage());
         }
     }
 
-    // Obtener usuario por ID
-    @GetMapping("/user/{id}")
-    public ResponseEntity<?> getUser(@PathVariable String id) {
+    /**
+     * Login de usuario con validación de contraseña
+     */
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@RequestBody LoginService loginRequest) {
         try {
-            logger.info("Get user by ID request: {}", id);
+            NewUser user = userService.getUserByEmail(loginRequest.getEmail());
+            if (user == null) {
+                return ResponseEntity.status(401).body("Usuario no encontrado");
+            }
+
+            boolean passwordOk = userService.checkPassword(loginRequest.getPassword(), user.getPassword());
+            if (!passwordOk) {
+                return ResponseEntity.status(401).body("Contraseña incorrecta");
+            }
+
+            String token = jwtUtil.generateToken(user.getEmail());
+            return ResponseEntity.ok(Map.of("token", token));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error en login: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Validar un token JWT
+     */
+    @PostMapping("/validate-token")
+    public ResponseEntity<?> validateToken(@RequestBody Map<String, String> body) {
+        String token = body.get("token");
+        if (token == null || token.isEmpty()) {
+            return ResponseEntity.badRequest().body("Token requerido");
+        }
+
+        boolean valid = jwtUtil.validateToken(token);
+        if (!valid) {
+            return ResponseEntity.status(401).body(Map.of("valid", false, "message", "Token inválido"));
+        }
+
+        String email = jwtUtil.extractEmail(token);
+        return ResponseEntity.ok(Map.of("valid", true, "email", email));
+    }
+
+    /**
+     * Obtener usuario por ID
+     */
+    @GetMapping("/user/{id}")
+    public ResponseEntity<?> getUserById(@PathVariable String id) {
+        try {
             NewUser user = userService.getUserById(id);
             if (user != null) {
-                logger.info("User found: {}", user);
                 return ResponseEntity.ok(user);
             } else {
-                logger.warn("User not found with ID: {}", id);
-                return ResponseEntity.status(404).body("User not found");
+                return ResponseEntity.status(404).body("Usuario no encontrado");
             }
-        } catch (Exception e) {
-            logger.error("Error getting user by ID", e);
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        } catch (ExecutionException | InterruptedException e) {
+            return ResponseEntity.status(500).body("Error obteniendo usuario: " + e.getMessage());
         }
     }
 
-    // Obtener usuario por email (enviado en el body)
+    /**
+     * Obtener usuario por email
+     */
     @PostMapping("/user/by-email")
     public ResponseEntity<?> getUserByEmail(@RequestBody Map<String, String> body) {
         try {
             String email = body.get("email");
-            logger.info("Get user by email request: {}", email);
-
             if (email == null || email.isEmpty()) {
-                logger.warn("Email not provided in request body");
-                return ResponseEntity.badRequest().body("Email is required");
+                return ResponseEntity.badRequest().body("Email es requerido");
             }
 
             NewUser user = userService.getUserByEmail(email);
             if (user != null) {
-                logger.info("User found by email: {}", user);
                 return ResponseEntity.ok(user);
             } else {
-                logger.warn("User not found with email: {}", email);
-                return ResponseEntity.status(404).body("User not found");
+                return ResponseEntity.status(404).body("Usuario no encontrado");
             }
         } catch (Exception e) {
-            logger.error("Error getting user by email", e);
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+            return ResponseEntity.status(500).body("Error obteniendo usuario: " + e.getMessage());
         }
     }
 }

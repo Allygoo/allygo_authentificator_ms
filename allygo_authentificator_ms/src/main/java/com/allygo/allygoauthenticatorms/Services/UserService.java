@@ -4,6 +4,8 @@ import com.allygo.allygoauthenticatorms.Record.NewUser;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import com.google.firebase.cloud.FirestoreClient;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,13 +14,19 @@ import java.util.concurrent.ExecutionException;
 @Service
 public class UserService {
 
+    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
     /**
      * Save a user with an auto-generated Firestore ID.
+     * The password will be stored encrypted.
      * @param newUser the user to save
      * @return generated Firestore ID + update time
      */
     public String saveUser(NewUser newUser) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
+
+        // Encrypt password before saving
+        newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
 
         // Let Firestore generate a unique document ID
         DocumentReference docRef = db.collection("users").document();
@@ -66,5 +74,15 @@ public class UserService {
         } else {
             return null;
         }
+    }
+
+    /**
+     * Checks if the provided raw password matches the hashed password.
+     * @param rawPassword password in plain text
+     * @param hashedPassword encrypted password
+     * @return true if match, false otherwise
+     */
+    public boolean checkPassword(String rawPassword, String hashedPassword) {
+        return passwordEncoder.matches(rawPassword, hashedPassword);
     }
 }
