@@ -84,8 +84,8 @@ jobs:
           --cpu=1 \
           --timeout=600 \
           --cpu-boost \
-          --update-secrets=/app/gcp-credentials.json=gcp-credentials:latest \
-          --set-env-vars="GOOGLE_APPLICATION_CREDENTIALS=/app/gcp-credentials.json,GOOGLE_CLOUD_PROJECT=allygo"
+          --update-secrets=/secrets/gcp-credentials.json=gcp-credentials:latest \
+          --set-env-vars="GOOGLE_APPLICATION_CREDENTIALS=/secrets/gcp-credentials.json,GOOGLE_CLOUD_PROJECT=allygo"
 
     - name: Get Cloud Run URL
       run: |

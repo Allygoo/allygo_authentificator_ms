@@ -28,7 +28,7 @@ RUN ls -la target/ && \
 EXPOSE 8080
 
 # Variable de entorno para las credenciales (se sobreescribirá en Cloud Run)
-ENV GOOGLE_APPLICATION_CREDENTIALS="/app/gcp-credentials.json"
+ENV GOOGLE_APPLICATION_CREDENTIALS="/secrets/gcp-credentials.json"
 
 # Comando para ejecutar la app
 CMD ["java", "-jar", "/app/target/app.jar"]
