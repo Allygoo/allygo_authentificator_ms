@@ -84,7 +84,7 @@ jobs:
       run: |
         echo "Verifying deployment health..."
         sleep 10
-        curl -f "$SERVICE_URL/actuator/health" || exit 1
+        curl -f "$SERVICE_URL/" || exit 1
         echo "✅ Deployment successful! Service is healthy."
 
     - name: Show deployment info
