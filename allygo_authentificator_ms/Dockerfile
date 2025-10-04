@@ -13,8 +13,8 @@ WORKDIR /app
 COPY pom.xml .
 COPY src ./src
 
-# Copia el JSON de credenciales
-COPY allygo-bd0a41475b5e.json /app/allygo-bd0a41475b5e.json
+## Copia el JSON de credenciales
+#COPY allygo-bd0a41475b5e.json /app/allygo-bd0a41475b5e.json
 
 # Compila el proyecto sin ejecutar tests
 RUN mvn clean package -DskipTests
