@@ -49,16 +49,14 @@ jobs:
         echo '${{ secrets.GCP_CREDENTIALS }}' > /tmp/gcp-credentials.json
 
     - name: Build Docker image
-      working-directory: ./allygo_authentificator_ms
+      working-directory: ./allygo_authentificator_ms/allygo_authentificator_ms
       run: |
         docker build \
-          --tag "$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:$GITHUB_SHA" \
           --tag "$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:latest" \
           .
 
     - name: Push Docker image to Artifact Registry
       run: |
-        docker push "$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:$GITHUB_SHA"
         docker push "$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:latest"
 
     - name: Create or update secret in Secret Manager
@@ -75,7 +73,7 @@ jobs:
     - name: Deploy to Cloud Run
       run: |
         gcloud run deploy $SERVICE_NAME \
-          --image=$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:$GITHUB_SHA \
+          --image=$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:latest \
           --platform=managed \
           --region=$REGION \
           --allow-unauthenticated \
@@ -113,4 +111,4 @@ jobs:
         echo "Service Name: $SERVICE_NAME"
         echo "Region: $REGION"
         echo "URL: $SERVICE_URL"
-        echo "Image: $ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:$GITHUB_SHA"
+        echo "Image: $ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:latest"
