@@ -22,8 +22,8 @@ RUN mvn clean package -DskipTests
 # Expone el puerto de la aplicación
 EXPOSE 8080
 
-# **AQUÍ está la línea clave**
-ENV GOOGLE_APPLICATION_CREDENTIALS="/app/allygo-bd0a41475b5e.json"
+# Variable de entorno para las credenciales (se sobreescribirá en Cloud Run)
+ENV GOOGLE_APPLICATION_CREDENTIALS="/app/gcp-credentials.json"
 
 # Comando para ejecutar la app
 CMD ["java", "-jar", "target/allygo-authentificator-ms-0.0.1-SNAPSHOT.jar"]
