@@ -14,13 +14,16 @@ COPY pom.xml .
 COPY src ./src
 
 # Copia el JSON de credenciales
-COPY allygo-8838fb41d42f.json /app/allygo-8838fb41d42f.json
+COPY allygo-bd0a41475b5e.json /app/allygo-bd0a41475b5e.json
 
 # Compila el proyecto sin ejecutar tests
 RUN mvn clean package -DskipTests
 
 # Expone el puerto de la aplicación
 EXPOSE 8080
+
+# **AQUÍ está la línea clave**
+ENV GOOGLE_APPLICATION_CREDENTIALS="/app/allygo-bd0a41475b5e.json"
 
 # Comando para ejecutar la app
 CMD ["java", "-jar", "target/allygo-authentificator-ms-0.0.1-SNAPSHOT.jar"]
