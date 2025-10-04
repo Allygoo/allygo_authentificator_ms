@@ -1,0 +1,100 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:  # Manual execution
+
+env:
+  PROJECT_ID: allygo
+  REGION: us-east1
+  SERVICE_NAME: authentificator-ms
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
+  IMAGE_REPO: microservices-repo-allygo
+  IMAGE_NAME: authentificator-ms
+
+jobs:
+  deploy-cloudrun:
+    name: Build and Deploy to Cloud Run
+    runs-on: ubuntu-latest
+    environment: production
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Authenticate to Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+    - name: Set up Cloud SDK
+      uses: google-github-actions/setup-gcloud@v2
+
+    - name: Configure Docker to use Artifact Registry
+      run: |
+        gcloud auth configure-docker $ARTIFACT_REGISTRY
+
+    - name: Build Docker image
+      working-directory: ./allygo_authentificator_ms
+      run: |
+        docker build \
+          --tag "$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:$GITHUB_SHA" \
+          --tag "$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:latest" \
+          .
+
+    - name: Push Docker image to Artifact Registry
+      run: |
+        docker push "$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:$GITHUB_SHA"
+        docker push "$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:latest"
+
+    - name: Deploy to Cloud Run
+      run: |
+        gcloud run deploy $SERVICE_NAME \
+          --image=$ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:$GITHUB_SHA \
+          --platform=managed \
+          --region=$REGION \
+          --allow-unauthenticated \
+          --port=8080 \
+          --min-instances=0 \
+          --max-instances=10 \
+          --memory=1Gi \
+          --cpu=1 \
+          --timeout=600 \
+          --cpu-boost \
+          --set-env-vars="GOOGLE_APPLICATION_CREDENTIALS=/app/allygo-bd0a41475b5e.json,GOOGLE_CLOUD_PROJECT=allygo"
+
+    - name: Get Cloud Run URL
+      run: |
+        SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
+          --platform=managed \
+          --region=$REGION \
+          --format='value(status.url)')
+        echo "Service URL: $SERVICE_URL"
+        echo "SERVICE_URL=$SERVICE_URL" >> $GITHUB_ENV
+
+    - name: Verify deployment
+      run: |
+        echo "Verifying deployment health..."
+        sleep 10
+        curl -f "$SERVICE_URL/actuator/health" || exit 1
+        echo "✅ Deployment successful! Service is healthy."
+
+    - name: Show deployment info
+      run: |
+        echo "==================================================="
+        echo "🚀 Deployment Complete!"
+        echo "==================================================="
+        echo "Service Name: $SERVICE_NAME"
+        echo "Region: $REGION"
+        echo "URL: $SERVICE_URL"
+        echo "Image: $ARTIFACT_REGISTRY/$PROJECT_ID/$IMAGE_REPO/$IMAGE_NAME:$GITHUB_SHA"
