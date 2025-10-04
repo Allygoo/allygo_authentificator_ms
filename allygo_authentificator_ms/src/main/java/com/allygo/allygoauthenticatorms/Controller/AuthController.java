@@ -81,7 +81,7 @@ public class AuthController {
      * Obtener usuario por ID
      */
     @GetMapping("/user/{id}")
-    public ResponseEntity<?> getUserById(@PathVariable String id) {
+    public ResponseEntity<?> getUserById(@PathVariable Long id) {
         try {
             NewUser user = userService.getUserById(id);
             if (user != null) {

@@ -17,33 +17,54 @@ public class UserService {
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     /**
-     * Save a user with an auto-generated Firestore ID.
+     * Save a user with an auto-incremented numeric ID.
      * The password will be stored encrypted.
      * @param newUser the user to save
-     * @return generated Firestore ID + update time
+     * @return generated numeric ID + update time
      */
     public String saveUser(NewUser newUser) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 
-        // Encrypt password before saving
-        newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
+        if (getUserByEmail(newUser.getEmail()) != null) {
+            throw new IllegalArgumentException("El email ya está registrado.");
+        }
 
-        // Let Firestore generate a unique document ID
-        DocumentReference docRef = db.collection("users").document();
+        Long newId = getNextUserId(db);
+
+        newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
+        newUser.setId(newId); // asignamos el id numérico
+
+        DocumentReference docRef = db.collection("users").document(String.valueOf(newId));
         ApiFuture<WriteResult> result = docRef.set(newUser);
 
-        return "User saved with ID: " + docRef.getId() +
+        return "User saved with numeric ID: " + newId +
                 " at: " + result.get().getUpdateTime();
     }
 
     /**
+     * Método para obtener el siguiente ID numérico de forma segura.
+     */
+    private Long getNextUserId(Firestore db) throws ExecutionException, InterruptedException {
+        DocumentReference counterRef = db.collection("counters").document("user_counter");
+
+        return db.runTransaction(transaction -> {
+            DocumentSnapshot snapshot = transaction.get(counterRef).get();
+            Long lastId = snapshot.contains("last_id") ? snapshot.getLong("last_id") : 0L;
+            Long newId = lastId + 1;
+
+            transaction.update(counterRef, "last_id", newId);
+            return newId;
+        }).get();
+    }
+
+    /**
      * Retrieve a user by Firestore ID.
-     * @param id Firestore document ID
+     * @param id Firestore document ID (numeric)
      * @return user object or null
      */
-    public NewUser getUserById(String id) throws ExecutionException, InterruptedException {
+    public NewUser getUserById(Long id) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
-        DocumentReference docRef = db.collection("users").document(id);
+        DocumentReference docRef = db.collection("users").document(String.valueOf(id));
         ApiFuture<DocumentSnapshot> future = docRef.get();
         DocumentSnapshot document = future.get();
 
@@ -56,13 +77,10 @@ public class UserService {
 
     /**
      * Retrieve a user by email.
-     * @param email user email
-     * @return user object or null
      */
     public NewUser getUserByEmail(String email) throws ExecutionException, InterruptedException {
         Firestore db = FirestoreClient.getFirestore();
 
-        // Firestore query: users where email == provided email
         CollectionReference users = db.collection("users");
         Query query = users.whereEqualTo("email", email).limit(1);
 
@@ -78,9 +96,6 @@ public class UserService {
 
     /**
      * Checks if the provided raw password matches the hashed password.
-     * @param rawPassword password in plain text
-     * @param hashedPassword encrypted password
-     * @return true if match, false otherwise
      */
     public boolean checkPassword(String rawPassword, String hashedPassword) {
         return passwordEncoder.matches(rawPassword, hashedPassword);

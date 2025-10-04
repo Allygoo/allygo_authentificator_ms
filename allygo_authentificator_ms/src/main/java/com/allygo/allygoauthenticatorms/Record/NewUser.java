@@ -1,7 +1,7 @@
 package com.allygo.allygoauthenticatorms.Record;
 
 public class NewUser {
-
+    private Long id;
     private String email;
     private String password;
     private String rol;
@@ -16,6 +16,7 @@ public class NewUser {
     }
 
     // Getters y setters
+    public void setId(Long id) {this.id = id; }
     public String getEmail() {
         return email;
     }
